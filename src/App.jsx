@@ -4,8 +4,9 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { DEVICES, ROLES, BOOKING_PURPOSES, DOCUMENTS } from "./constants.js";
-import { useBookings, useActivityLog, useOnlineUsers } from "./hooks.js";
+import { DEVICES, ROLES, BOOKING_PURPOSES, DOCUMENTS, LINKED_BOOKINGS, DEVICE_CATEGORIES } from "./constants.js";
+import { useBookings, useActivityLog, useOnlineUsers, useDevices } from "./hooks.js";
+import AdminPanel, { AdminLogin } from "./AdminPanel.jsx";
 import {
   formatDate, formatDateShort, formatTime, formatDateTime, formatDateLong,
   addDays, addHours, isSameDay, getWeekDates, generateUserId,
@@ -372,10 +373,15 @@ function MainApp({ currentUser, onLogout }) {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
 
   const { bookings, loading, addBooking, updateBooking, removeBooking } = useBookings();
   const { logs, logActivity } = useActivityLog();
   const onlineUsers = useOnlineUsers(currentUser);
+  const { devices: firebaseDevices } = useDevices();
+
+  // Nutze Firebase-Geräte wenn vorhanden, sonst Fallback auf constants.js
+  const activeDevices = firebaseDevices.length > 0 ? firebaseDevices : DEVICES;
 
   const role = ROLES[currentUser.role];
 
@@ -403,12 +409,28 @@ function MainApp({ currentUser, onLogout }) {
         });
         notify("Buchung aktualisiert", "success");
       } else {
+        // Hauptbuchung erstellen
         await addBooking(data);
         await logActivity({
           type: "booking_created", user: currentUser.name, role: currentUser.role,
           deviceId: data.deviceId, detail: `${data.purpose}: ${formatDateTime(data.start)} – ${formatDateTime(data.end)}`,
         });
-        notify(`Buchung für ${DEVICES.find((d) => d.id === data.deviceId)?.name} erstellt`, "success");
+
+        // Verknüpfte Geräte automatisch mitbuchen (z.B. Online System → DT 950 + HKP + Photometer)
+        const linked = LINKED_BOOKINGS[data.deviceId];
+        if (linked && linked.length > 0) {
+          for (const linkedId of linked) {
+            await addBooking({ ...data, deviceId: linkedId, notes: `Automatisch mitgebucht (Online System) — ${data.notes || ""}`.trim() });
+            await logActivity({
+              type: "booking_created", user: currentUser.name, role: currentUser.role,
+              deviceId: linkedId, detail: `Automatisch mitgebucht via Online System: ${formatDateTime(data.start)} – ${formatDateTime(data.end)}`,
+            });
+          }
+          const linkedNames = linked.map((id) => DEVICES.find((d) => d.id === id)?.name).filter(Boolean).join(", ");
+          notify(`Online System gebucht inkl. ${linkedNames}`, "success");
+        } else {
+          notify(`Buchung für ${DEVICES.find((d) => d.id === data.deviceId)?.name} erstellt`, "success");
+        }
       }
     } catch (err) {
       notify("Fehler beim Speichern: " + err.message, "error");
@@ -437,11 +459,12 @@ function MainApp({ currentUser, onLogout }) {
     { key: "devices",   label: "Geräte",    icon: icons.device },
     { key: "documents", label: "Dokumente", icon: icons.doc },
     { key: "users",     label: "Benutzer",  icon: icons.users },
+    { key: "admin",     label: "Admin",     icon: icons.shield },
   ];
 
   const viewTitles = {
     dashboard: "Dashboard", calendar: "Buchungskalender", devices: "Geräte-Übersicht",
-    documents: "Dokumentenmanagement", users: "Benutzerverwaltung",
+    documents: "Dokumentenmanagement", users: "Benutzerverwaltung", admin: "Admin-Panel",
   };
 
   return (
@@ -597,6 +620,13 @@ function MainApp({ currentUser, onLogout }) {
           )}
           {view === "users" && (
             <Users bookings={bookings} onlineUsers={onlineUsers} logs={logs} />
+          )}
+          {view === "admin" && (
+            adminUnlocked ? (
+              <AdminPanel notify={notify} bookings={bookings} onlineUsers={onlineUsers} logs={logs} />
+            ) : (
+              <AdminLogin onLogin={() => setAdminUnlocked(true)} />
+            )
           )}
         </div>
       </main>
@@ -1285,6 +1315,23 @@ function BookingModal({ currentUser, bookings, editing, preDevice, onClose, onSa
               {DEVICES.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.location})</option>)}
             </select>
           </Field>
+
+          {/* Linked Devices Info */}
+          {LINKED_BOOKINGS[deviceId] && (
+            <div style={{
+              padding: "10px 14px", borderRadius: 8, background: "var(--info-bg)",
+              border: "1px solid #BAE6FD", display: "flex", gap: 8, alignItems: "flex-start",
+            }}>
+              {icons.info({ size: 16, style: { color: "var(--info)", flexShrink: 0, marginTop: 1 } })}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0369A1" }}>Automatische Mitbuchung</div>
+                <div style={{ fontSize: 12, color: "#0C4A6E", marginTop: 2 }}>
+                  Folgende Geräte werden automatisch mitgebucht:{" "}
+                  <strong>{LINKED_BOOKINGS[deviceId].map((id) => DEVICES.find((d) => d.id === id)?.name).filter(Boolean).join(", ")}</strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Purpose */}
           <Field label="Buchungszweck">

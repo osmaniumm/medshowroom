@@ -1,14 +1,41 @@
 // ═══════════════════════════════════════════════════════════════════
-// KONSTANTEN & KONFIGURATION
+// KONSTANTEN & KONFIGURATION — ERWEKA Showroom
 // ═══════════════════════════════════════════════════════════════════
 
 export const DEVICES = [
-  { id: "device-1", num: 1, name: "Ultraschall-Diagnostik Pro",  type: "Diagnostik",  location: "Raum A1" },
-  { id: "device-2", num: 2, name: "CT-Scanner Precision",        type: "Bildgebung",  location: "Raum A2" },
-  { id: "device-3", num: 3, name: "MRT-Analysator Elite",        type: "Bildgebung",  location: "Raum B1" },
-  { id: "device-4", num: 4, name: "Laboranalytik System X",      type: "Labor",       location: "Raum B2" },
-  { id: "device-5", num: 5, name: "Endoskopie-Station Advanced", type: "Endoskopie",  location: "Raum C1" },
+  // ─── Dissolution Tester ────────────────────────────────────────
+  { id: "dt-950",       num: 1,  name: "DT 950 / DT 9510",          type: "Dissolution",    location: "Showroom", category: "dissolution" },
+  { id: "robodis",      num: 2,  name: "RoboDis II+",               type: "Dissolution",    location: "Showroom", category: "dissolution" },
+  { id: "hkp",          num: 3,  name: "Hubkolbenpumpe (HKP)",      type: "Dissolution",    location: "Showroom", category: "dissolution" },
+  { id: "photometer",   num: 4,  name: "Shimadzu Photometer",       type: "Dissolution",    location: "Showroom", category: "dissolution" },
+  { id: "online",       num: 5,  name: "Online System",             type: "Dissolution",    location: "Showroom", category: "dissolution",
+    // Wenn Online System gebucht wird, werden automatisch diese Geräte mitgebucht:
+    linkedDevices: ["dt-950", "hkp", "photometer"],
+  },
+  { id: "mediprep",     num: 6,  name: "MediPrep",                  type: "Medienvorbereitung", location: "Showroom", category: "dissolution" },
+
+  // ─── Physikalische Tester ──────────────────────────────────────
+  { id: "multicheck",   num: 7,  name: "MultiCheck 6 / EasyCheck",  type: "Bruchfestigkeit",  location: "Showroom", category: "physical" },
+  { id: "tbh2",         num: 8,  name: "TBH II",                    type: "Härtetester",      location: "Showroom", category: "physical" },
+  { id: "zt732",        num: 9,  name: "ZT 732",                    type: "Zerfallszeit",     location: "Showroom", category: "physical" },
+  { id: "tar2",         num: 10, name: "TAR II",                    type: "Friabilität",      location: "Showroom", category: "physical" },
+  { id: "svm2",         num: 11, name: "SVM II",                    type: "Stampfvolumeter",  location: "Showroom", category: "physical" },
+  { id: "gtl",          num: 12, name: "GTL / GT / GTB",            type: "Granulatfluss",    location: "Showroom", category: "physical" },
+  { id: "vdt",          num: 13, name: "VDT/S",                     type: "Vakuum-Dichtigkeit", location: "Showroom", category: "physical" },
 ];
+
+// Alias für Admin-Seed-Funktion
+export const DEFAULT_DEVICES = DEVICES;
+
+// Geräte-IDs die automatisch mitgebucht werden beim Online System
+export const LINKED_BOOKINGS = {
+  "online": ["dt-950", "hkp", "photometer"],
+};
+
+export const DEVICE_CATEGORIES = {
+  dissolution: { label: "Dissolution Tester", color: "#0284C7" },
+  physical:    { label: "Physikalische Tester", color: "#7C3AED" },
+};
 
 export const ROLES = {
   sales: {
@@ -44,12 +71,36 @@ export const ROLES = {
     maxWeeksNoApproval: 2,
     description: "Schulungen & Evaluierungen",
   },
+  montage: {
+    label: "Montage",
+    color: "#D97706",
+    bg: "#FEF3C7",
+    maxBookingDaysNoApproval: 365,
+    canEditDocs: true,
+    docAccess: ["manuals", "qualification", "software"],
+    canPriorityBook: true,
+    maxWeeksNoApproval: 52,
+    description: "Montage & Geräteaufbau",
+  },
+  rnd: {
+    label: "R&D",
+    color: "#DC2626",
+    bg: "#FEE2E2",
+    maxBookingDaysNoApproval: 365,
+    canEditDocs: true,
+    docAccess: ["manuals", "qualification", "software"],
+    canPriorityBook: true,
+    maxWeeksNoApproval: 52,
+    description: "Forschung & Entwicklung",
+  },
 };
 
 export const BOOKING_PURPOSES = {
   sales:       ["Produktdemo", "Kundenbesichtigung", "Vertriebspräsentation", "Messeplanung"],
   service:     ["Wartung", "Firmware-Update", "Reparatur", "IQ/OQ-Qualifikation", "Kalibrierung", "Sicherheitsprüfung"],
   application: ["Kundenschulung", "Interne Schulung", "Klinische Evaluierung", "Testprotokoll", "Applikationstest"],
+  montage:     ["Geräteaufbau", "Montage", "Inbetriebnahme", "Umbau", "Demontage"],
+  rnd:         ["Produktentwicklung", "Prototypentest", "Validierung", "Machbarkeitsstudie", "Langzeittest"],
 };
 
 export const DOCUMENTS = {
